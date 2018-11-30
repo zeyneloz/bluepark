@@ -1,53 +1,66 @@
-import typing
+import json
 
-from bluepark.types import ASGIScope, ASGIReceive
+from .app import BluePark
+from .utils import cached_property
+from .types import ASGIScope, ASGIReceive
 
 
 class BaseRequest:
 
-    def __init__(self, scope: ASGIScope, receive: ASGIReceive) -> None:
-        self._scope = scope
-        self._receive = receive
-        self._has_more_body = True
+    def __init__(self, app: BluePark, scope: ASGIScope, receive: ASGIReceive) -> None:
+        self.app = app
+        self.scope = scope
+        self.receive = receive
+
+        # charset encodings to be used
+        self._header_encoding = app.settings['DEFAULT_HEADER_ENCODING']
+        self._charset_encoding = app.settings['DEFAULT_CHARSET_ENCODING']
 
     @property
-    def scope(self) -> ASGIScope:
-        return self._scope
+    def charset_encoding(self):
+        return self._charset_encoding
 
     def _parse_headers(self):
-        '''Read all headers from the scope object and construct headers dict'''
-        return {header_name.decode(): header_value.decode()
-                for header_name, header_value in self._scope['headers']}
+        '''
+        Read all headers from the scope object and construct headers dict.
 
-    async def _read_body(self) -> typing.AsyncGenerator[bytes, None]:
-        '''Read the current chunk in body and yield it'''
-        while self._has_more_body:
-            message = await self._receive()
-            body = message.get('body', b'')
-            self._has_more_body = message.get('more_body', False)
-            yield body
-        yield b''
+        All header names are converted to uppercase by default.
+        '''
+        return {header_name.decode(self._header_encoding).upper(): header_value.decode(self._header_encoding)
+                for header_name, header_value in self.scope['headers']}
 
 
 class HttpRequest(BaseRequest):
+    '''HTTP 1.1 Request'''
 
-    def __init__(self, scope: ASGIScope, receive: ASGIReceive) -> None:
-        super(HttpRequest, self).__init__(scope, receive)
+    def __init__(self, app: BluePark, scope: ASGIScope, receive: ASGIReceive) -> None:
+        super(HttpRequest, self).__init__(app, scope, receive)
+
+        self._has_more_body = True
         self._body = None
-        self._headers = self._parse_headers()
+        self._json = None
+        self.method = None
+        self.cookies = None
 
-    @property
-    def scope(self) -> ASGIScope:
-        return self._scope
+        self._parse_scope()
 
-    @property
-    def headers(self) -> dict:
-        return self._headers
+    def _parse_scope(self):
+        self.headers = self._parse_headers()
+        self.method = self.scope.get('method', None)
+        self.scheme = self.scope.get('scheme', 'http')
+        self.http_version = self.scope.get('http_version', None)
+        self.path = self.scope.get('path')
+        self.query_string = self.scope.get('query_string', b'').decode(self._header_encoding)
+        self.full_path = self.path + self.query_string
 
-    async def body(self) -> bytes:
-        '''Read and return the entire body from an incoming ASGI request. Cache the body for later access'''
-        if self._body is None:
-            self._body = b''
-            async for body_chunk in self._read_body():
-                self._body += body_chunk
+    @cached_property
+    def body_as_bytes(self) -> bytes:
         return self._body
+
+    @cached_property
+    def body_as_text(self) -> str:
+        return self.body_as_bytes.decode(self.charset_encoding)
+
+    @cached_property
+    def body_as_json(self) -> str:
+        return json.loads(self.body_as_text)
