@@ -18,7 +18,7 @@ class BluePark:
     def dispatch(self, scope: ASGIScope) -> ASGIAppInstance:
         '''This method creates an ASGI app'''
 
-        from .applications import ASGIHttpApplication
+        from .asgiapps import ASGIHttpApplication
 
         if scope['type'] == 'http':
             return ASGIHttpApplication(self, scope)
