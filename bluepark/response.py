@@ -1,5 +1,5 @@
 from .app import BluePark
-from .types import ASGIScope, ASGISend
+from .utils.types import ASGIScope, ASGISend
 
 
 class HttpResponse:

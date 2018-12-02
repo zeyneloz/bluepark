@@ -1,5 +1,5 @@
 from .settings import Settings, DEFAULT_SETTINGS
-from .types import ASGIScope, ASGIAppInstance
+from .utils.types import ASGIScope, ASGIAppInstance
 
 
 class BluePark:
@@ -18,7 +18,7 @@ class BluePark:
     def dispatch(self, scope: ASGIScope) -> ASGIAppInstance:
         '''This method creates an ASGI app'''
 
-        from .asgiapps import ASGIHttpApplication
+        from bluepark.asgiapps import ASGIHttpApplication
 
         if scope['type'] == 'http':
             return ASGIHttpApplication(self, scope)

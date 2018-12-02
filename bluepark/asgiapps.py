@@ -1,7 +1,7 @@
 from .app import BluePark
 from .request import HttpRequest
 from .response import HttpResponse
-from .types import ASGIScope, ASGIReceive, ASGISend
+from .utils.types import ASGIScope, ASGIReceive, ASGISend
 
 
 class BaseASGIApplication:
@@ -50,6 +50,7 @@ class ASGIHttpApplication(BaseASGIApplication):
         # TODO Remove all the code below
         print(self.request.headers)
         print(self.request.scope)
+        print(self.request.content_type)
 
         await self.response.send({
             'type': 'http.response.start',
