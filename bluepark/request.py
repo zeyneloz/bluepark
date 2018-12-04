@@ -49,6 +49,7 @@ class HttpRequest(BaseRequest):
         self.cookies = {}
         self.content_type = {}
         self.headers = {}
+        self.media_type = None
 
         self._parse_scope()
         self._parse_content_type()
@@ -76,6 +77,7 @@ class HttpRequest(BaseRequest):
 
         if mime_re_result:
             self.content_type['media-type'] = mime_re_result.group('mime')
+            self.media_type = mime_re_result.group('mime')
         if charset_re_result:
             self.content_type['charset'] = charset_re_result.group('charset')
             self._encoding = charset_re_result.group('charset')
@@ -88,7 +90,7 @@ class HttpRequest(BaseRequest):
 
     @cached_property
     def body_as_text(self) -> str:
-        return self.body_as_bytes.decode(self.charset)
+        return self.body_as_bytes.decode(self.encoding)
 
     @cached_property
     def body_as_json(self) -> str:

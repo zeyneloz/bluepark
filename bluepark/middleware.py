@@ -4,7 +4,7 @@ from .request import HttpRequest
 from .response import HttpResponse
 
 
-async def receive_http_body_middleware(request: HttpRequest, response: HttpResponse) -> Awaitable:
+async def receive_http_body_middleware(request: HttpRequest, response: HttpResponse) -> None:
     '''Receive the http body and append it to the request body'''
     has_more_body = True
     body = b''
