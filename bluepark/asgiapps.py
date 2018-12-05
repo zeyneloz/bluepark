@@ -48,9 +48,11 @@ class ASGIHttpApplication(BaseASGIApplication):
         await self._run_middleware()
 
         # TODO Remove all the code below
-        print(self.request.headers)
-        print(self.request.scope)
-        print(self.request.content_type)
+        # print(self.request.headers)
+        # print(self.request.scope)
+        # print(self.request.content_type)
+        print(self.request.body_as_json(silent=False))
+        print(self.request.text)
 
         await self.response.send({
             'type': 'http.response.start',

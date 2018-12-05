@@ -1,8 +1,9 @@
 import json
 import re
+from typing import Optional
 
 from .app import BluePark
-from .utils.decorators import cached_property
+from .exceptions import RequestBodyNotExist
 from .utils.types import ASGIScope, ASGIReceive
 
 
@@ -20,7 +21,6 @@ class BaseRequest:
 
         # charset encodings to be used
         self._header_encoding = app.settings['DEFAULT_HEADER_ENCODING']
-        self._encoding = app.settings['DEFAULT_CHARSET_ENCODING']
 
     def _parse_headers(self):
         '''
@@ -31,11 +31,6 @@ class BaseRequest:
         self.headers = {header_name.decode(self._header_encoding).upper(): header_value.decode(self._header_encoding)
                         for header_name, header_value in self.scope['headers']}
 
-    @property
-    def encoding(self):
-        '''Charset to be used to decode request body'''
-        return self._encoding
-
 
 class HttpRequest(BaseRequest):
     '''HTTP 1.1 Request'''
@@ -44,12 +39,12 @@ class HttpRequest(BaseRequest):
         super(HttpRequest, self).__init__(app, scope, receive)
 
         self._has_more_body = True
-        self._body = None
-        self._json = None
+        self.body = None
+        self.text = None
+        self.json = None
         self.cookies = {}
         self.content_type = {}
         self.headers = {}
-        self.media_type = None
 
         self._parse_scope()
         self._parse_content_type()
@@ -67,7 +62,7 @@ class HttpRequest(BaseRequest):
         self.script_path = self.scope.get('root_path', '')
 
     def _parse_content_type(self):
-        '''Parse Content-Type header and try to get mimetype. charset, boundary'''
+        '''Parse Content-Type header and try to get mimetype. charset, boundary.'''
         content_type = self.headers.get('CONTENT-TYPE', '')
         self.content_type = {}
 
@@ -77,21 +72,61 @@ class HttpRequest(BaseRequest):
 
         if mime_re_result:
             self.content_type['media-type'] = mime_re_result.group('mime')
-            self.media_type = mime_re_result.group('mime')
         if charset_re_result:
             self.content_type['charset'] = charset_re_result.group('charset')
-            self._encoding = charset_re_result.group('charset')
         if boundary_re_result:
             self.content_type['boundary'] = boundary_re_result.group('boundary')
 
-    @cached_property
-    def body_as_bytes(self) -> bytes:
-        return self._body
+    @property
+    def charset(self):
+        '''Charset to be used to decode request body, designated by content-type header.'''
+        return self.content_type.get('charset', self.app.settings['DEFAULT_CHARSET_ENCODING'])
 
-    @cached_property
-    def body_as_text(self) -> str:
-        return self.body_as_bytes.decode(self.encoding)
+    @property
+    def media_type(self):
+        '''Return the media-type of the request designated by content-type header.'''
+        return self.content_type.get('media-type', None)
 
-    @cached_property
-    def body_as_json(self) -> str:
-        return json.loads(self.body_as_text)
+    def _body_as_bytes(self) -> bytes:
+        '''Raise exception if the body is not received yet, return the body otherwise.'''
+        if self._has_more_body or self.body is None:
+            raise RequestBodyNotExist()
+        return self.body
+
+    def body_as_text(self, silent=False) -> Optional[str]:
+        '''
+        Decode and return the request body using ``self.charset``. Cache the result in ``self.text``.
+
+        :param silent: Do not raise decoding errors and return ``None`` instead.
+        '''
+        if self.text:
+            return self.text
+
+        try:
+            self.text = self._body_as_bytes().decode(self.charset)
+        except UnicodeDecodeError as e:
+            if silent:
+                return None
+            else:
+                raise e
+
+        return self.text
+
+    def body_as_json(self, silent=False) -> Optional[dict]:
+        '''
+        Parse request body as JSON and return. Cache the return value in ``self.json``.
+
+        :param silent: Do not raise parsing errors and return ``None`` instead.
+        '''
+        if self.json is not None:
+            return self.json
+
+        try:
+            self.json = json.loads(self.body_as_text(silent=silent))
+        except (ValueError, TypeError) as e:
+            if silent:
+                return None
+            else:
+                raise e
+
+        return self.json

@@ -14,4 +14,5 @@ async def receive_http_body_middleware(request: HttpRequest, response: HttpRespo
         if message['type'] == 'http.request':
             body += message.get('body', b'')
         has_more_body = message.get('has_more_body', False)
-    request._body = body
+    request._has_more_body = False
+    request.body = body
