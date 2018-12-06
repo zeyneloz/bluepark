@@ -51,7 +51,7 @@ class HttpRequest(BaseRequest):
         self._parse_content_type()
         self._parse_cookies()
 
-    def _parse_scope(self):
+    def _parse_scope(self) -> None:
         '''Define ASGI attributes for the request'''
 
         self._parse_headers()
@@ -63,7 +63,7 @@ class HttpRequest(BaseRequest):
         self.full_path = self.path + self.query_string
         self.script_path = self.scope.get('root_path', '')
 
-    def _parse_content_type(self):
+    def _parse_content_type(self) -> None:
         '''Parse Content-Type header and try to get mimetype. charset, boundary.'''
         content_type = self.headers.get('CONTENT-TYPE', '')
         self.content_type = {}
@@ -79,7 +79,7 @@ class HttpRequest(BaseRequest):
         if boundary_re_result:
             self.content_type['boundary'] = boundary_re_result.group('boundary')
 
-    def _parse_cookies(self):
+    def _parse_cookies(self) -> None:
         '''Parse Cookies header and build a dict.'''
         cookie_string = self.headers.get('COOKIE', '')
         cookie_parser = SimpleCookie()
@@ -89,20 +89,41 @@ class HttpRequest(BaseRequest):
             self.cookies[key] = obj.value
 
     @property
-    def charset(self):
+    def charset(self) -> str:
         '''Charset to be used to decode request body, designated by content-type header.'''
         return self.content_type.get('charset', self.app.settings['DEFAULT_CHARSET_ENCODING'])
 
     @property
-    def media_type(self):
+    def media_type(self) -> Optional[str]:
         '''Return the media-type of the request designated by content-type header.'''
         return self.content_type.get('media-type', None)
+
+    @property
+    def content_length(self) -> Optional[int]:
+        '''Return CONTENT-LENGTH header as int or None.'''
+        content_length = self.headers.get('CONTENT-LENGTH', None)
+
+        if content_length is not None:
+            try:
+                return max(0, int(content_length))
+            except (ValueError, TypeError):
+                pass
+        return None
+
+    @property
+    def _form_boundary(self)-> Optional[str]:
+        return self.content_type.get('boundary', None)
 
     def _body_as_bytes(self) -> bytes:
         '''Raise exception if the body is not received yet, return the body otherwise.'''
         if self._has_more_body or self.body is None:
             raise RequestBodyNotExist()
         return self.body
+
+    def _load_form_data(self) -> None:
+        '''Read body as text and load form data. After calling this sets `form` and `files` on the request object to
+        multi dicts filled with the incoming form data'''
+        pass
 
     def body_as_text(self, silent=False) -> Optional[str]:
         '''
