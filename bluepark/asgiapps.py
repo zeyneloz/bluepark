@@ -51,8 +51,8 @@ class ASGIHttpApplication(BaseASGIApplication):
         # print(self.request.headers)
         # print(self.request.scope)
         # print(self.request.content_type)
-        print(self.request.body_as_json(silent=False))
-        print(self.request.text)
+        # print(self.request.body_as_json(silent=True))
+        print(self.request.cookies)
 
         await self.response.send({
             'type': 'http.response.start',

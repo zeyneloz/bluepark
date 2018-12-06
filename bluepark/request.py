@@ -1,4 +1,5 @@
 import json
+from http.cookies import SimpleCookie
 import re
 from typing import Optional
 
@@ -48,6 +49,7 @@ class HttpRequest(BaseRequest):
 
         self._parse_scope()
         self._parse_content_type()
+        self._parse_cookies()
 
     def _parse_scope(self):
         '''Define ASGI attributes for the request'''
@@ -76,6 +78,15 @@ class HttpRequest(BaseRequest):
             self.content_type['charset'] = charset_re_result.group('charset')
         if boundary_re_result:
             self.content_type['boundary'] = boundary_re_result.group('boundary')
+
+    def _parse_cookies(self):
+        '''Parse Cookies header and build a dict.'''
+        cookie_string = self.headers.get('COOKIE', '')
+        cookie_parser = SimpleCookie()
+        cookie_parser.load(cookie_string)
+
+        for key, obj in cookie_parser.items():
+            self.cookies[key] = obj.value
 
     @property
     def charset(self):
