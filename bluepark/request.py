@@ -1,11 +1,12 @@
 import json
 from http.cookies import SimpleCookie
 import re
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 from .app import BluePark
-from .exceptions import RequestBodyNotExist
-from .utils.types import ASGIScope, ASGIReceive
+from .exceptions import (RequestBodyNotExist, HTTPConnectionClosed, BodyAlreadyReceived)
+from .utils.decorators import cached_async_method
+from .utils.types import ASGIScope, ASGIReceive, ASGIMessage
 
 
 _media_type_from_content_type_re = re.compile(r'\s*(?P<mime>[^\s;]+)', re.I)
@@ -50,6 +51,35 @@ class HttpRequest(BaseRequest):
         self._parse_scope()
         self._parse_content_type()
         self._parse_cookies()
+
+    async def next_http_message(self) -> ASGIMessage:
+        '''Receive and return next http message. Raise exception if the connection is closed.'''
+        if not self._has_more_body:
+            raise BodyAlreadyReceived()
+
+        message = await self.receive()
+        if message['type'] == 'http.disconnect':
+            raise HTTPConnectionClosed()
+        if message['type'] == 'http.request':
+            return message
+        # Return fake message on unknown message type
+        return {}
+
+    async def stream_http_body(self) -> AsyncGenerator[bytes, None]:
+        '''Await for next http message and yield the body until `has_more_body` is False.'''
+        while self._has_more_body:
+            message = await self.next_http_message()
+            self._has_more_body = message.get('has_more_body', False)
+            yield message.get('body', b'')
+
+    async def receive_http_body(self) -> None:
+        '''Receive and assemble http body.'''
+        if not self._has_more_body:
+            raise BodyAlreadyReceived()
+
+        self.body = b''
+        async for body in self.stream_http_body():
+            self.body += body
 
     def _parse_scope(self) -> None:
         '''Define ASGI attributes for the request'''
@@ -114,51 +144,53 @@ class HttpRequest(BaseRequest):
     def _form_boundary(self)-> Optional[str]:
         return self.content_type.get('boundary', None)
 
-    def _body_as_bytes(self) -> bytes:
-        '''Raise exception if the body is not received yet, return the body otherwise.'''
-        if self._has_more_body or self.body is None:
-            raise RequestBodyNotExist()
+    async def body_as_bytes(self) -> Optional[bytes]:
+        '''
+        Receive all HTTP messages and return the body. Cache the result in `self.body`.
+        '''
+        if self.body is None:
+            await self.receive_http_body()
         return self.body
 
     def _load_form_data(self) -> None:
-        '''Read body as text and load form data. After calling this sets `form` and `files` on the request object to
-        multi dicts filled with the incoming form data'''
+        '''
+        Read body as text and load form data. After calling this sets `form` and `files` on the request object to
+        multi dicts filled with the incoming form data
+        '''
         pass
 
-    def body_as_text(self, silent=False) -> Optional[str]:
+    async def body_as_text(self, silent=False) -> Optional[str]:
         '''
-        Decode and return the request body using ``self.charset``. Cache the result in ``self.text``.
+        Decode and return the request body using `self.charset`. Cache the result in `self.text`.
 
-        :param silent: Do not raise decoding errors and return ``None`` instead.
+        :param silent: Do not raise decoding errors and return `None` instead.
         '''
-        if self.text:
-            return self.text
-
-        try:
-            self.text = self._body_as_bytes().decode(self.charset)
-        except UnicodeDecodeError as e:
-            if silent:
-                return None
-            else:
-                raise e
+        if self.text is None:
+            try:
+                body = await self.body_as_bytes()
+                self.text = body.decode(self.charset)
+            except UnicodeDecodeError as e:
+                if silent:
+                    return None
+                else:
+                    raise e
 
         return self.text
 
-    def body_as_json(self, silent=False) -> Optional[dict]:
+    async def body_as_json(self, silent=False) -> Optional[dict]:
         '''
-        Parse request body as JSON and return. Cache the return value in ``self.json``.
+        Parse request body as JSON and return. Cache the return value in `self.json`.
 
-        :param silent: Do not raise parsing errors and return ``None`` instead.
+        :param silent: Do not raise parsing errors and return `None` instead.
         '''
-        if self.json is not None:
-            return self.json
-
-        try:
-            self.json = json.loads(self.body_as_text(silent=silent))
-        except (ValueError, TypeError) as e:
-            if silent:
-                return None
-            else:
-                raise e
+        if self.json is None:
+            try:
+                text = await self.body_as_text(silent=silent)
+                self.json = json.loads(text)
+            except (ValueError, TypeError) as e:
+                if silent:
+                    return None
+                else:
+                    raise e
 
         return self.json
