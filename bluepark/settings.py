@@ -5,7 +5,10 @@ DEFAULT_SETTINGS = {
     'ENV': None,
 
     # Default charset to be used in decoding of request body
-    'DEFAULT_CHARSET_ENCODING': 'utf-8',
+    'DEFAULT_REQUEST_CHARSET': 'utf-8',
+
+    # Default charset to be used in encoding of response body
+    'DEFAULT_RESPONSE_CHARSET': 'utf-8',
 
     # Default charset encoding to be used in decoding of request headers
     'DEFAULT_HEADER_ENCODING': 'latin-1',

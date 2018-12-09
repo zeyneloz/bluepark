@@ -121,7 +121,7 @@ class HttpRequest(BaseRequest):
     @property
     def charset(self) -> str:
         '''Charset to be used to decode request body, designated by content-type header.'''
-        return self.content_type.get('charset', self.app.settings['DEFAULT_CHARSET_ENCODING'])
+        return self.content_type.get('charset', self.app.settings['DEFAULT_REQUEST_CHARSET'])
 
     @property
     def media_type(self) -> Optional[str]:

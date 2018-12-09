@@ -7,4 +7,5 @@ ASGISend = typing.Callable[[ASGIMessage], typing.Awaitable[None]]
 ASGIAppInstance = typing.Callable[[ASGIReceive, ASGISend], typing.Awaitable[None]]
 ASGIApp = typing.Callable[[ASGIScope], ASGIAppInstance]
 
-HttpMiddleware = typing.Callable[[], typing.Awaitable]
+HTTPView = typing.Callable[[typing.Any, typing.Any], typing.Awaitable[None]]
+RequestMethods = typing.Iterable[str]

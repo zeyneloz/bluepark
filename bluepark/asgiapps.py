@@ -41,31 +41,26 @@ class ASGIHttpApplication(BaseASGIApplication):
 
     async def handle_connection(self):
         '''This method will be called whenever there is a new connection from ASGI server'''
-        self.request = HttpRequest(self.app, self.scope, self.receive)
-        self.response = HttpResponse(self.app, self.scope, self.send)
+        request = HttpRequest(self.app, self.scope, self.receive)
+        response = HttpResponse(self.app, self.scope, self.send)
+
+        self.request = request
+        self.response = response
 
         # Run all middleware and wait for them
         await self._run_middleware()
 
-        # TODO Remove all the code below
-        # print(self.request.headers)
-        # print(self.request.scope)
-        # print(self.request.content_type)
-        print(await self.request.body_as_text(silent=False))
-        print(await self.request.body_as_json(silent=True))
-        print(await self.request.body_as_bytes())
+        rule = self.app._main_router.get_rule_for_path(request.path)
 
-        await self.response.send({
-            'type': 'http.response.start',
-            'status': 200,
-            'headers': [
-                [b'content-type', b'text/plain'],
-            ]
-        })
-        await self.response.send({
-            'type': 'http.response.body',
-            'body': b'Hello, world!',
-        })
+        if rule is None:
+            response.status = 404
+            return await response.send_text('Not Found')
+
+        if not rule.is_method_allowed(request.method):
+            response.status = 405
+            return await response.send_text('Method Not Allowed')
+
+        await rule.view_function(request, response)
 
     async def _run_middleware(self):
         '''Execute each middleware in http middleware list in order and await for all of them'''
