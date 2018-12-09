@@ -1,6 +1,7 @@
 from .app import BluePark
 from .utils.types import ASGIScope, ASGISend
 
+import json
 
 class HttpResponse:
 
@@ -44,6 +45,7 @@ class HttpResponse:
         })
 
     async def end(self):
+        '''End the http response. It is not possible to send http messages after calling this method.'''
         await self.send_http_body(b'', more_body=False)
 
     async def send_text(self, text, more_body: bool = False) -> None:
@@ -57,3 +59,14 @@ class HttpResponse:
         self.headers['Content-Type'] = f'text/plain; charset={self.charset}'
         await self.start_response()
         await self.send_http_body(text.encode(self.charset), more_body=more_body)
+
+    async def send_json(self, json_obj):
+        '''
+        Send JSON response.
+
+        :param json_obj: Dictionary object to be sent.
+        '''
+        self.headers['Content-Type'] = f'application/json; charset={self.charset}'
+        json_body = json.dumps(json_obj, ensure_ascii=False, separators=(",", ":"))
+        await self.start_response()
+        await self.send_http_body(json_body.encode(self.charset))
