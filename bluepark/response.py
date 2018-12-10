@@ -3,6 +3,7 @@ from .utils.types import ASGIScope, ASGISend
 
 import json
 
+
 class HttpResponse:
 
     def __init__(self, app: BluePark, scope: ASGIScope, send: ASGISend) -> None:
@@ -44,7 +45,7 @@ class HttpResponse:
             'more_body': more_body
         })
 
-    async def end(self):
+    async def end_response(self):
         '''End the http response. It is not possible to send http messages after calling this method.'''
         await self.send_http_body(b'', more_body=False)
 
