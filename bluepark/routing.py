@@ -28,12 +28,14 @@ class BaseRouter:
         if default_http_methods is not None:
             self._default_http_methods = (method.upper() for method in default_http_methods)
 
-    def normalize_path(self, path):
+    def normalize_path(self, path: str):
         '''
         Given a path string, remove leading slash and put a trailing slash.
 
         :param path: The URL path as string
         '''
+        if path == '':
+            return ''
         return path.strip('/') + '/'
 
     def add_rule(self, path: str, view_function: HTTPView,
@@ -56,13 +58,13 @@ class BaseRouter:
         else:
             methods = [method.upper() for method in methods]
 
-        path = self.normalize_path(path)
+        normalized_path = self.normalize_path(path)
+        prefixed_path = '/' + self.prefix + normalized_path
         rule = URLRule(view_function, rule_name, methods)
-        self._add_rule(path, rule)
+        self._add_rule(prefixed_path, rule)
 
-    def _add_rule(self, normalized_path: str, rule: URLRule):
-        prefixed_path = self.prefix + normalized_path
-        self._rules[prefixed_path] = rule
+    def _add_rule(self, path: str, rule: URLRule):
+        self._rules[path] = rule
 
     def route(self, path: str, rule_name: str = None, methods: RequestMethods = None) -> Callable:
         '''A decorator for add_rule.'''
@@ -102,6 +104,6 @@ class Router(BaseRouter):
         for path, rule in self._rules.items():
             self._add_to_main_router(path, rule)
 
-    def _add_rule(self, normalized_path: str, rule: URLRule):
-        super(Router, self)._add_rule(normalized_path, rule)
-        self._add_to_main_router(normalized_path, rule)
+    def _add_rule(self, path: str, rule: URLRule):
+        super(Router, self)._add_rule(path, rule)
+        self._add_to_main_router(path, rule)
