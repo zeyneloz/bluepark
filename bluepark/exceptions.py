@@ -12,3 +12,8 @@ class HTTPConnectionClosed(Exception):
 class BodyAlreadyReceived(Exception):
     '''All of the HTTP body is already received'''
     pass
+
+
+class HTTPResponseAlreadyStarted(Exception):
+    '''HTTP response already started'''
+    pass

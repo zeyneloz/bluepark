@@ -25,6 +25,8 @@ async def user_list_view(request, response):
 @blue_router.route('users/', methods=['GET', 'POST'])
 async def user_list(request, response):
     if request.method == 'GET':
+        response.set_cookie(key='csrf', value='frr8Uw', max_age=3600)
+        response.set_cookie(key='token', value='SJS7JMZ02PPXYEGKHLQ1FFF', max_age=60*60*60)
         return await response.send_json([
             {'id': 1, 'name': 'zeynel'},
             {'id': 2, 'name': 'was'},
