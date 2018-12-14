@@ -1,10 +1,10 @@
 from typing import Awaitable
 
-from .request import HttpRequest
-from .response import HttpResponse
+from .request import HTTPRequest
+from .response import HTTPResponse
 
 
-async def receive_http_body_middleware(request: HttpRequest, response: HttpResponse) -> None:
+async def receive_http_body_middleware(request: HTTPRequest, response: HttpResponse) -> None:
     '''Receive the http body and append it to the request body'''
     has_more_body = True
     body = b''

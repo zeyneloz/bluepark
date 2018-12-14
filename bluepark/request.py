@@ -34,11 +34,30 @@ class BaseRequest:
                         for header_name, header_value in self.scope['headers']}
 
 
-class HttpRequest(BaseRequest):
+class HTTPHeaderParserMixin:
+
+    def _parse_content_type(self) -> None:
+        '''Parse Content-Type header and try to get mimetype. charset, boundary.'''
+        content_type = self.headers.get('CONTENT-TYPE', '')
+        self.content_type = {}
+
+        mime_re_result = _media_type_from_content_type_re.search(content_type)
+        charset_re_result = _charset_from_content_type_re.search(content_type)
+        boundary_re_result = _boundary_from_content_type_re.search(content_type)
+
+        if mime_re_result:
+            self.content_type['media-type'] = mime_re_result.group('mime')
+        if charset_re_result:
+            self.content_type['charset'] = charset_re_result.group('charset')
+        if boundary_re_result:
+            self.content_type['boundary'] = boundary_re_result.group('boundary')
+
+
+class HTTPRequest(HTTPHeaderParserMixin, BaseRequest):
     '''HTTP 1.1 Request'''
 
     def __init__(self, app: BluePark, scope: ASGIScope, receive: ASGIReceive) -> None:
-        super(HttpRequest, self).__init__(app, scope, receive)
+        super(HTTPRequest, self).__init__(app, scope, receive)
 
         self._has_more_body = True
         self.body = None
@@ -93,22 +112,6 @@ class HttpRequest(BaseRequest):
         self.full_path = self.path + self.query_string
         self.script_path = self.scope.get('root_path', '')
 
-    def _parse_content_type(self) -> None:
-        '''Parse Content-Type header and try to get mimetype. charset, boundary.'''
-        content_type = self.headers.get('CONTENT-TYPE', '')
-        self.content_type = {}
-
-        mime_re_result = _media_type_from_content_type_re.search(content_type)
-        charset_re_result = _charset_from_content_type_re.search(content_type)
-        boundary_re_result = _boundary_from_content_type_re.search(content_type)
-
-        if mime_re_result:
-            self.content_type['media-type'] = mime_re_result.group('mime')
-        if charset_re_result:
-            self.content_type['charset'] = charset_re_result.group('charset')
-        if boundary_re_result:
-            self.content_type['boundary'] = boundary_re_result.group('boundary')
-
     def _parse_cookies(self) -> None:
         '''Parse Cookies header and build a dict.'''
         cookie_string = self.headers.get('COOKIE', '')
@@ -152,13 +155,6 @@ class HttpRequest(BaseRequest):
             await self.receive_http_body()
         return self.body
 
-    def _load_form_data(self) -> None:
-        '''
-        Read body as text and load form data. After calling this sets `form` and `files` on the request object to
-        multi dicts filled with the incoming form data
-        '''
-        pass
-
     async def body_as_text(self, silent=False) -> Optional[str]:
         '''
         Decode and return the request body using `self.charset`. Cache the result in `self.text`.
@@ -194,3 +190,10 @@ class HttpRequest(BaseRequest):
                     raise e
 
         return self.json
+
+    def _load_form_data(self) -> None:
+        '''
+        Read body as text and load form data. After calling this sets `form` and `files` on the request object to
+        multi dicts filled with the incoming form data
+        '''
+        pass

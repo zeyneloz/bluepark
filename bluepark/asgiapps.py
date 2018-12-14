@@ -1,6 +1,6 @@
 from .app import BluePark
-from .request import HttpRequest
-from .response import HttpResponse
+from .request import HTTPRequest
+from .response import HTTPResponse
 from .utils.types import ASGIScope, ASGIReceive, ASGISend
 
 
@@ -41,8 +41,8 @@ class ASGIHttpApplication(BaseASGIApplication):
 
     async def handle_connection(self):
         '''This method will be called whenever there is a new connection from ASGI server'''
-        request = HttpRequest(self.app, self.scope, self.receive)
-        response = HttpResponse(self.app, self.scope, self.send)
+        request = HTTPRequest(self.app, self.scope, self.receive)
+        response = HTTPResponse(self.app, self.scope, self.send)
 
         self.request = request
         self.response = response

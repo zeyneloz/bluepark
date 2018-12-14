@@ -7,7 +7,7 @@ from .utils.types import ASGIScope, ASGISend
 from .exceptions import HTTPResponseAlreadyStarted
 
 
-class HttpResponse:
+class HTTPResponse:
 
     def __init__(self, app: BluePark, scope: ASGIScope, send: ASGISend) -> None:
         self.app = app
