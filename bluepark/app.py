@@ -20,10 +20,10 @@ class BluePark:
     def dispatch(self, scope: ASGIScope) -> ASGIAppInstance:
         '''This method creates an ASGI app'''
 
-        from bluepark.asgiapps import ASGIHttpApplication
+        from bluepark.asgiapps import ASGIHTTPApplication
 
         if scope['type'] == 'http':
-            return ASGIHttpApplication(self, scope)
+            return ASGIHTTPApplication(self, scope)
 
     @property
     def http_middleware_list(self):

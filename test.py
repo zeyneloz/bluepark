@@ -13,6 +13,25 @@ app.register_router(user_router)
 app.register_router(blue_router)
 
 
+async def middleware_logger(request, response, next_middleware):
+    print(f'New request for: {request.path}')
+    await next_middleware()
+    print('Returned from  middleware_cookie')
+
+
+async def middleware_cookie(request, response, next_middleware):
+    response.set_cookie('sessionid', 'f9Kw2a', 10*8*2016)
+    print('Session id is set')
+    await next_middleware()
+    print('Returned from view function')
+
+# Middleware are called in order before calling the view function
+# Every middleware must await for next_middleware
+# At the end, next_middleware will reach the view function.
+app.add_http_middleware(middleware_logger)
+app.add_http_middleware(middleware_cookie)
+
+
 @user_router.route('speech/', methods=['GET', 'POST'])
 async def user_list_view(request, response):
     # Visit http://localhost:8000/speech/

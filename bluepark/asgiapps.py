@@ -1,7 +1,9 @@
+from typing import Awaitable
+
 from .app import BluePark
 from .request import HTTPRequest
 from .response import HTTPResponse
-from .utils.types import ASGIScope, ASGIReceive, ASGISend
+from .utils.types import ASGIScope, ASGIReceive, ASGISend, HTTPView
 
 
 class BaseASGIApplication:
@@ -30,7 +32,7 @@ class BaseASGIApplication:
         raise NotImplementedError()
 
 
-class ASGIHttpApplication(BaseASGIApplication):
+class ASGIHTTPApplication(BaseASGIApplication):
     '''
     ASGI app for Http connections.
 
@@ -41,28 +43,60 @@ class ASGIHttpApplication(BaseASGIApplication):
 
     async def handle_connection(self):
         '''This method will be called whenever there is a new connection from ASGI server'''
-        request = HTTPRequest(self.app, self.scope, self.receive)
-        response = HTTPResponse(self.app, self.scope, self.send)
-
-        self.request = request
-        self.response = response
+        self.request = HTTPRequest(self.app, self.scope, self.receive)
+        self.response = HTTPResponse(self.app, self.scope, self.send)
 
         # Run all middleware and wait for them
-        await self._run_middleware()
+        await self.dispatch()
 
-        rule = self.app._main_router.get_rule_for_path(request.path)
+    async def dispatch(self):
+        dispatcher = HTTPDispatcher(self)
+        await dispatcher()
+
+
+class HTTPDispatcher:
+    '''Await for first middleware in the middleware list.
+
+    Pass a callable to the middleware that returns the next middleware on the list.
+    If there is no next middleware, return
+    '''
+    _middleware_iterator = None
+
+    def __init__(self, asgi_app: ASGIHTTPApplication):
+        self.asgi_app = asgi_app
+        self._middleware_iterator = iter(asgi_app.app._http_middleware)
+
+    def __call__(self, *args, **kwargs) -> Awaitable:
+        '''Return the next middleware in the list'''
+
+        next_middleware = next(self._middleware_iterator, None)
+        if next_middleware is not None:
+            return next_middleware(self.asgi_app.request, self.asgi_app.response, self)
+
+        view_function = self.get_view_function()
+        return view_function(self.asgi_app.request, self.asgi_app.response)
+
+    def get_view_function(self) -> HTTPView:
+        '''Return the view function that matches request path.
+        Return None of no view is found for the path'''
+        rule = self.asgi_app.app._main_router.get_rule_for_path(self.asgi_app.request.path)
 
         if rule is None:
-            response.status = 404
-            return await response.send_text('Not Found')
+            return self.not_found
 
-        if not rule.is_method_allowed(request.method):
-            response.status = 405
-            return await response.send_text('Method Not Allowed')
+        if not rule.is_method_allowed(self.asgi_app.request.method):
+            return self.method_not_allowed
 
-        await rule.view_function(request, response)
+        return rule.view_function
 
-    async def _run_middleware(self):
-        '''Execute each middleware in http middleware list in order and await for all of them'''
-        for middleware in self.app._http_middleware:
-            await middleware(self.request, self.response)
+    @staticmethod
+    async def not_found(request, response):
+        '''Send 404 Not found HTTP message'''
+        response.status = 404
+        await response.send_text('Not Found')
+
+    @staticmethod
+    async def method_not_allowed(request, response):
+        '''Send 405 Method Not Allowed HTTP message'''
+        response.status = 405
+        await response.send_text('Method Not Allowed')
