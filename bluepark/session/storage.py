@@ -1,3 +1,5 @@
+from bluepark.utils.signing import TimeStampedHMACSigner
+
 
 class BaseSession:
     cookie_string = None
@@ -62,5 +64,9 @@ class BaseSession:
 
 class CookieSession(BaseSession):
 
-    pass
+    def load(self, cookie_string: str) -> None:
+        if cookie_string is None:
+            return
+        signer = TimeStampedHMACSigner(key=self.secret_key)
+
 
