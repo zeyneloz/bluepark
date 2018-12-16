@@ -56,6 +56,8 @@ async def user_list(request, response):
 
 @blue_router.route('products/', methods=['GET'])
 async def product_list(request, response):
+    from bluepark import current_app
+    print(current_app.settings)
     await response.send_json([
         {'id': 1, 'name': 'never'}
     ])

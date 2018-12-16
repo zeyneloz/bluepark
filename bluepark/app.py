@@ -2,6 +2,8 @@ from .routing import MainRouter, Router
 from .settings import Settings, DEFAULT_SETTINGS
 from .utils.types import ASGIScope, ASGIAppInstance
 
+from .globals import current_app
+
 
 class BluePark:
     '''
@@ -12,6 +14,7 @@ class BluePark:
         self.settings = Settings(DEFAULT_SETTINGS)
         self._http_middleware = []
         self._main_router = MainRouter()
+        current_app._wrap(self)
 
     def __call__(self, scope: ASGIScope) -> ASGIAppInstance:
         # scope is a dictionary that contains at least a type key specifying the protocol that is incoming.
