@@ -14,13 +14,13 @@ DEFAULT_SETTINGS = {
     'DEFAULT_HEADER_ENCODING': 'latin-1',
 
     # Secret key to be used sign session cookies
-    'SESSION_SECRET_KEY'
+    'SESSION_SECRET_KEY': 'When',
     
     # Name to be used in cookies for session
     'SESSION_COOKIE_NAME': 'session',
 
     # In seconds, defaults to 15 days
-    'SESSION_COOKIE_AGE': 60 * 60 * 24 * 15,
+    'SESSION_COOKIE_MAX_AGE': 60 * 60 * 24 * 15,
 
     # The path set on the session cookie
     'SESSION_COOKIE_PATH': '/',

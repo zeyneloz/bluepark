@@ -1,4 +1,5 @@
-from bluepark.utils.signing import TimeStampedHMACSigner
+from bluepark.utils.signing import hmac_json_dumps, hmac_json_loads, BadSignature
+from bluepark import current_app
 
 
 class BaseSession:
@@ -58,15 +59,18 @@ class BaseSession:
     def save(self) -> None:
         raise NotImplementedError()
 
-    def get_cookie_string(self) -> str:
-        raise NotImplementedError()
-
 
 class CookieSession(BaseSession):
 
     def load(self, cookie_string: str) -> None:
         if cookie_string is None:
             return
-        signer = TimeStampedHMACSigner(key=self.secret_key)
+        try:
+            self._session = hmac_json_loads(message=cookie_string,
+                                            key=self.secret_key,
+                                            max_age=current_app.settings['SESSION_COOKIE_MAX_AGE'])
+        except BadSignature:
+            pass
 
-
+    def save(self):
+        self.cookie_string = hmac_json_dumps(self._session, key=self.secret_key)
