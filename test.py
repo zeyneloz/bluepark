@@ -3,6 +3,8 @@ import uvicorn
 
 from bluepark.app import BluePark
 from bluepark.routing import Router
+from bluepark.session.middleware import session_middleware
+from bluepark.session.backend import CookieSession
 
 
 app = BluePark()
@@ -16,20 +18,13 @@ app.register_router(blue_router)
 async def middleware_logger(request, response, next_middleware):
     print(f'New request for: {request.path}')
     await next_middleware()
-    print('Returned from  middleware_cookie')
-
-
-async def middleware_cookie(request, response, next_middleware):
-    response.set_cookie('sessionid', 'f9Kw2a', 10*8*2016)
-    print('Session id is set')
-    await next_middleware()
-    print('Returned from view function')
+    print('Request ends')
 
 # Middleware are called in order before calling the view function
 # Every middleware must await for next_middleware
 # At the end, next_middleware will reach the view function.
 app.add_http_middleware(middleware_logger)
-app.add_http_middleware(middleware_cookie)
+app.add_http_middleware(session_middleware(backend=CookieSession))
 
 
 @user_router.route('speech/', methods=['GET', 'POST'])
