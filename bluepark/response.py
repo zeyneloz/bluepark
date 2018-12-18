@@ -8,21 +8,23 @@ from .exceptions import HTTPResponseAlreadyStarted
 
 
 class HTTPResponse:
+    '''Response object that is passed to the middleware and view.'''
 
     def __init__(self, app: BluePark, scope: ASGIScope, send: ASGISend) -> None:
         self.app = app
         self.scope = scope
-        self.send = send
+        self._send = send
         self._response_started = False
         self.headers = {}
         self._extra_headers = []
         self.status = 200
         self.charset = app.settings['DEFAULT_RESPONSE_CHARSET']
+        self.body = None
 
         # charset encodings to be used
         self._header_encoding = app.settings['DEFAULT_HEADER_ENCODING']
 
-    def _get_headers_list(self):
+    def _get_headers(self):
         '''Return the list of headers in ASGI header format.'''
         headers = []
         for name, value in self.headers.items():
@@ -38,15 +40,15 @@ class HTTPResponse:
             return
 
         self._response_started = True
-        await self.send({
+        await self._send({
             'type': 'http.response.start',
             'status': self.status,
-            'headers': self._get_headers_list()
+            'headers': self._get_headers()
         })
 
     async def send_http_body(self, body: bytes, more_body: bool = False) -> None:
         '''Send a http body message.'''
-        await self.send({
+        await self._send({
             'type': 'http.response.body',
             'body': body,
             'more_body': more_body
@@ -55,29 +57,6 @@ class HTTPResponse:
     async def end_response(self):
         '''End the http response. It is not possible to send http messages after calling this method.'''
         await self.send_http_body(b'', more_body=False)
-
-    async def send_text(self, text, more_body: bool = False) -> None:
-        '''
-        Send text response.
-
-        :param text: Text to be sent
-        :param more_body: If it is True, does not end the response and more body can be sent.
-        '''
-
-        self.headers['Content-Type'] = f'text/plain; charset={self.charset}'
-        await self.start_response()
-        await self.send_http_body(text.encode(self.charset), more_body=more_body)
-
-    async def send_json(self, json_obj):
-        '''
-        Send JSON response.
-
-        :param json_obj: Dictionary object to be sent.
-        '''
-        self.headers['Content-Type'] = f'application/json; charset={self.charset}'
-        json_body = json.dumps(json_obj, ensure_ascii=False, separators=(",", ":"))
-        await self.start_response()
-        await self.send_http_body(json_body.encode(self.charset))
 
     def set_cookie(
             self,
@@ -127,3 +106,39 @@ class HTTPResponse:
         if same_site is not None:
             cookie_string = cookie_string.rstrip(';') + f'; SameSite={same_site}'
         self._extra_headers.append(('Set-Cookie', cookie_string))
+
+
+class BaseBody:
+    '''Base response body'''
+
+    def get_body(self, charset: str):
+        raise NotImplementedError()
+
+    @property
+    def mime_type(self) -> str:
+        raise NotImplementedError()
+
+
+class JSONBody(BaseBody):
+
+    def __init__(self, data: dict) -> None:
+        self.data = data
+
+    def get_body(self, charset: str) -> bytes:
+        return json.dumps(self.data, ensure_ascii=False, separators=(",", ":")).encode(charset)
+
+    @property
+    def mime_type(self) -> str:
+        return 'application/json'
+
+
+class TextBody(BaseBody):
+    def __init__(self, data: str) -> None:
+        self.data = data
+
+    def get_body(self, charset: str) -> bytes:
+        return self.data.encode(charset)
+
+    @property
+    def mime_type(self) -> str:
+        return 'text/html'

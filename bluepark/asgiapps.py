@@ -3,6 +3,7 @@ from typing import Awaitable
 from .app import BluePark
 from .request import HTTPRequest
 from .response import HTTPResponse
+from .response import TextBody
 from .utils.types import ASGIScope, ASGIReceive, ASGISend, HTTPView
 
 
@@ -48,10 +49,19 @@ class ASGIHTTPApplication(BaseASGIApplication):
 
         # Run all middleware and wait for them
         await self.dispatch()
+        await self.send_response()
 
     async def dispatch(self):
         dispatcher = HTTPDispatcher(self)
         await dispatcher()
+
+    async def send_response(self):
+        if self.response.body is None:
+            return
+        self.response.headers['Content-Type'] = f'{self.response.body.mime_type}; charset={self.response.charset}'
+        body = self.response.body.get_body(self.response.charset)
+        await self.response.start_response()
+        await self.response.send_http_body(body)
 
 
 class HTTPDispatcher:
@@ -93,10 +103,10 @@ class HTTPDispatcher:
     async def not_found(request, response):
         '''Send 404 Not found HTTP message'''
         response.status = 404
-        await response.send_text('Not Found')
+        response.body = TextBody('Not Found')
 
     @staticmethod
     async def method_not_allowed(request, response):
         '''Send 405 Method Not Allowed HTTP message'''
         response.status = 405
-        await response.send_text('Method Not Allowed')
+        response.body = TextBody('Method Not Allowed')

@@ -5,7 +5,7 @@ from bluepark.app import BluePark
 from bluepark.routing import Router
 from bluepark.session.middleware import session_middleware
 from bluepark.session.backend import CookieSession
-
+from bluepark.response import JSONBody, TextBody
 
 app = BluePark()
 
@@ -16,7 +16,7 @@ app.register_router(blue_router)
 
 
 async def middleware_logger(request, response, next_middleware):
-    print(f'New request for: {request.path}')
+    print(f'New request for: {request.method} - {request.path}')
     await next_middleware()
     print('Request ends')
 
@@ -29,33 +29,29 @@ app.add_http_middleware(session_middleware(backend=CookieSession))
 
 @user_router.route('speech/', methods=['GET', 'POST'])
 async def user_list_view(request, response):
-    # Visit http://localhost:8000/speech/
-    print(request.method)
-    await response.send_text('Because love, ', more_body=True)
-    await response.send_text('it’s not an emotion.', more_body=True)
-    await response.send_text('Love is a promise')
+    response.set_cookie(key='csrf', value='7 months', max_age=3600)
+    response.body = TextBody(data='Love is a promise?')
 
 
-@blue_router.route('users/', methods=['GET', 'POST'])
+@blue_router.route('users/', methods=['GET'])
 async def user_list(request, response):
     if request.method == 'GET':
-        response.set_cookie(key='csrf', value='frr8Uw', max_age=3600)
-        response.set_cookie(key='token', value='SJS7JMZ02PPXYEGKHLQ1FFF', max_age=60*60*60)
-        return await response.send_json([
-            {'id': 1, 'name': 'zeynel'},
-            {'id': 2, 'name': 'was'},
-            {'id': 3, 'name': 'here'}
-        ])
-    await response.send_json({})
+        response.body = JSONBody(data={
+            'bucket-list': [
+                {'id': 1, 'todo': '/'},
+                {'id': 2, 'todo': '3'},
+                {'id': 3, 'todo': 'a'},
+                {'id': 4, 'todo': 'j'},
+                {'id': 5, 'todo': '1'},
+                {'id': 6, 'todo': 'v'},
+                {'id': 7, 'todo': 'C'},
+            ]
+        })
 
 
 @blue_router.route('products/', methods=['GET'])
 async def product_list(request, response):
-    from bluepark import current_app
-    print(current_app.settings)
-    await response.send_json([
-        {'id': 1, 'name': 'never'}
-    ])
+    response.body = JSONBody(data={})
 
 if __name__ == "__main__":
     uvicorn.run(app, "127.0.0.1", 8000, log_level="info")
