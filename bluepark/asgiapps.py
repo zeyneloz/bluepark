@@ -2,8 +2,7 @@ from typing import Awaitable
 
 from .app import BluePark
 from .request import HTTPRequest
-from .response import HTTPResponse
-from .response import TextBody
+from .response import TextResponse, HTTPBaseResponse
 from .utils.types import ASGIScope, ASGIReceive, ASGISend, HTTPView
 
 
@@ -20,6 +19,7 @@ class BaseASGIApplication:
     def __init__(self, app: BluePark, scope: ASGIScope) -> None:
         self.app = app
         self.scope = scope
+        self._response_started = False
 
     async def __call__(self, receive: ASGIReceive, send: ASGISend) -> None:
         '''The receive awaitable provides events as dicts as they occur, and the send awaitable sends events back to
@@ -42,26 +42,44 @@ class ASGIHTTPApplication(BaseASGIApplication):
     multiple requests.
     '''
 
+    async def start_response(self, status, headers):
+        '''Start the http response if it is not started yet.'''
+        if self._response_started:
+            return
+        self._response_started = True
+        await self.send({
+            'type': 'http.response.start',
+            'status': status,
+            'headers': headers
+        })
+
+    async def send_http_body(self, body: bytes, more_body: bool = False) -> None:
+        '''Send a http body message.'''
+        await self.send({
+            'type': 'http.response.body',
+            'body': body,
+            'more_body': more_body
+        })
+
+    async def end_response(self):
+        '''End the http response. It is not possible to send http messages after calling this method.'''
+        await self.send_http_body(b'', more_body=False)
+
     async def handle_connection(self):
         '''This method will be called whenever there is a new connection from ASGI server'''
         self.request = HTTPRequest(self.app, self.scope, self.receive)
-        self.response = HTTPResponse(self.app, self.scope, self.send)
 
         # Run all middleware and wait for them
-        await self.dispatch()
-        await self.send_response()
+        response = await self.dispatch()
+        await self.send_response(response)
 
     async def dispatch(self):
         dispatcher = HTTPDispatcher(self)
-        await dispatcher()
+        return await dispatcher()
 
-    async def send_response(self):
-        if self.response.body is None:
-            return
-        self.response.headers['Content-Type'] = f'{self.response.body.mime_type}; charset={self.response.charset}'
-        body = self.response.body.get_body(self.response.charset)
-        await self.response.start_response()
-        await self.response.send_http_body(body)
+    async def send_response(self, response: HTTPBaseResponse):
+        await self.start_response(status=response.status, headers=response.get_headers())
+        await self.send_http_body(body=response.body_as_bytes())
 
 
 class HTTPDispatcher:
@@ -81,10 +99,10 @@ class HTTPDispatcher:
 
         next_middleware = next(self._middleware_iterator, None)
         if next_middleware is not None:
-            return next_middleware(self.asgi_app.request, self.asgi_app.response, self)
+            return next_middleware(self.asgi_app.request, self)
 
         view_function = self.get_view_function()
-        return view_function(self.asgi_app.request, self.asgi_app.response)
+        return view_function(self.asgi_app.request)
 
     def get_view_function(self) -> HTTPView:
         '''Return the view function that matches request path.
@@ -100,13 +118,11 @@ class HTTPDispatcher:
         return rule.view_function
 
     @staticmethod
-    async def not_found(request, response):
+    async def not_found(request):
         '''Send 404 Not found HTTP message'''
-        response.status = 404
-        response.body = TextBody('Not Found')
+        return TextResponse('Not Found', status=404)
 
     @staticmethod
-    async def method_not_allowed(request, response):
+    async def method_not_allowed(request):
         '''Send 405 Method Not Allowed HTTP message'''
-        response.status = 405
-        response.body = TextBody('Method Not Allowed')
+        return TextResponse('Method Not Allowed', status=404)

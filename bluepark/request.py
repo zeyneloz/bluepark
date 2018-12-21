@@ -31,9 +31,9 @@ class BaseRequest:
         '''
         Read all headers from the scope object and construct headers dict.
 
-        All header names are converted to uppercase by default.
+        All header names are converted to lowercase by default.
         '''
-        self.headers = {header_name.decode(self._header_encoding).upper(): header_value.decode(self._header_encoding)
+        self.headers = {header_name.decode(self._header_encoding).lower(): header_value.decode(self._header_encoding)
                         for header_name, header_value in self.scope['headers']}
 
 
@@ -47,7 +47,7 @@ class HTTPHeaderParserMixin:
     def _parse_content_type(self) -> None:
         '''Parse Content-Type header and try to get mimetype. charset, boundary.'''
         self.content_type = {}
-        content_type = self.headers.get('CONTENT-TYPE', '')
+        content_type = self.headers.get('content-type', '')
 
         mime_re_result = _media_type_from_content_type_re.search(content_type)
         charset_re_result = _charset_from_content_type_re.search(content_type)
@@ -63,7 +63,7 @@ class HTTPHeaderParserMixin:
     def _parse_cookies(self) -> None:
         '''Parse Cookies header and build a dict.'''
         self.cookies = {}
-        cookie_string = self.headers.get('COOKIE', '')
+        cookie_string = self.headers.get('cookie', '')
         cookie_parser = SimpleCookie()
         cookie_parser.load(cookie_string)
 
@@ -83,7 +83,7 @@ class HTTPHeaderParserMixin:
     @cached_property
     def content_length(self) -> Optional[int]:
         '''Return CONTENT-LENGTH header as int or None.'''
-        content_length = self.headers.get('CONTENT-LENGTH', None)
+        content_length = self.headers.get('content-length', None)
 
         if content_length is not None:
             try:

@@ -5,7 +5,7 @@ from bluepark.app import BluePark
 from bluepark.routing import Router
 from bluepark.session.middleware import session_middleware
 from bluepark.session.backend import CookieSession
-from bluepark.response import JSONBody, TextBody
+from bluepark.response import JSONResponse, TextResponse
 
 app = BluePark()
 
@@ -15,10 +15,11 @@ app.register_router(user_router)
 app.register_router(blue_router)
 
 
-async def middleware_logger(request, response, next_middleware):
+async def middleware_logger(request, next_middleware):
     print(f'New request for: {request.method} - {request.path}')
-    await next_middleware()
+    response = await next_middleware()
     print('Request ends')
+    return response
 
 # Middleware are called in order before calling the view function
 # Every middleware must await for next_middleware
@@ -28,15 +29,16 @@ app.add_http_middleware(session_middleware(backend=CookieSession))
 
 
 @user_router.route('speech/', methods=['GET', 'POST'])
-async def user_list_view(request, response):
-    response.set_cookie(key='csrf', value='7 months', max_age=3600)
-    response.body = TextBody(data='Love is a promise?')
+async def user_list_view(request):
+    response = TextResponse('Okay', status=200)
+    response.set_cookie(key='csrf', value='r', max_age=3600)
+    return response
 
 
 @blue_router.route('users/', methods=['GET'])
-async def user_list(request, response):
+async def user_list(request):
     if request.method == 'GET':
-        response.body = JSONBody(data={
+        return JSONResponse({
             'bucket-list': [
                 {'id': 1, 'todo': '/'},
                 {'id': 2, 'todo': '3'},
@@ -50,8 +52,8 @@ async def user_list(request, response):
 
 
 @blue_router.route('products/', methods=['GET'])
-async def product_list(request, response):
-    response.body = JSONBody(data={})
+async def product_list(request,):
+    return JSONResponse(data={})
 
 if __name__ == "__main__":
     uvicorn.run(app, "127.0.0.1", 8000, log_level="info")

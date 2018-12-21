@@ -1,62 +1,35 @@
-from http.cookies import SimpleCookie
 import json
+from http.cookies import SimpleCookie
 from typing import Union
 
-from .app import BluePark
-from .utils.types import ASGIScope, ASGISend
+from . import current_app
 from .exceptions import HTTPResponseAlreadyStarted
+from .utils.structures import CaseInsensitiveDict
 
 
-class HTTPResponse:
-    '''Response object that is passed to the middleware and view.'''
+class HTTPBaseResponse:
 
-    def __init__(self, app: BluePark, scope: ASGIScope, send: ASGISend) -> None:
-        self.app = app
-        self.scope = scope
-        self._send = send
+    def __init__(self, status: int = 200) -> None:
         self._response_started = False
-        self.headers = {}
+        self.headers = CaseInsensitiveDict()
         self._extra_headers = []
-        self.status = 200
-        self.charset = app.settings['DEFAULT_RESPONSE_CHARSET']
+        self.status = status
+        self.charset = current_app.settings['DEFAULT_RESPONSE_CHARSET']
         self.body = None
 
         # charset encodings to be used
-        self._header_encoding = app.settings['DEFAULT_HEADER_ENCODING']
+        self._header_encoding = current_app.settings['DEFAULT_HEADER_ENCODING']
 
-    def _get_headers(self):
+    def get_headers(self):
         '''Return the list of headers in ASGI header format.'''
         headers = []
+        self.headers.setdefault('content-type', self._content_type)
         for name, value in self.headers.items():
             headers.append([name.encode(self._header_encoding), value.encode(self._header_encoding)])
 
         for name, value in self._extra_headers:
             headers.append([name.encode(self._header_encoding), value.encode(self._header_encoding)])
         return headers
-
-    async def start_response(self):
-        '''Start the http response if it is not started yet.'''
-        if self._response_started:
-            return
-
-        self._response_started = True
-        await self._send({
-            'type': 'http.response.start',
-            'status': self.status,
-            'headers': self._get_headers()
-        })
-
-    async def send_http_body(self, body: bytes, more_body: bool = False) -> None:
-        '''Send a http body message.'''
-        await self._send({
-            'type': 'http.response.body',
-            'body': body,
-            'more_body': more_body
-        })
-
-    async def end_response(self):
-        '''End the http response. It is not possible to send http messages after calling this method.'''
-        await self.send_http_body(b'', more_body=False)
 
     def set_cookie(
             self,
@@ -105,40 +78,33 @@ class HTTPResponse:
         cookie_string = cookie.output(header='').strip()
         if same_site is not None:
             cookie_string = cookie_string.rstrip(';') + f'; SameSite={same_site}'
-        self._extra_headers.append(('Set-Cookie', cookie_string))
-
-
-class BaseBody:
-    '''Base response body'''
-
-    def get_body(self, charset: str):
-        raise NotImplementedError()
+        self._extra_headers.append(('set-cookie', cookie_string))
 
     @property
-    def mime_type(self) -> str:
+    def _content_type(self):
+        return f'application/json; charset={self.charset}'
+
+    def body_as_bytes(self) -> bytes:
         raise NotImplementedError()
 
 
-class JSONBody(BaseBody):
+class TextResponse(HTTPBaseResponse):
+    _mime_type = 'text/html'
 
-    def __init__(self, data: dict) -> None:
-        self.data = data
+    def __init__(self, content: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.content = content
 
-    def get_body(self, charset: str) -> bytes:
-        return json.dumps(self.data, ensure_ascii=False, separators=(",", ":")).encode(charset)
-
-    @property
-    def mime_type(self) -> str:
-        return 'application/json'
+    def body_as_bytes(self) -> bytes:
+        return self.content.encode(self.charset)
 
 
-class TextBody(BaseBody):
-    def __init__(self, data: str) -> None:
-        self.data = data
+class JSONResponse(HTTPBaseResponse):
+    _mime_type = 'application/json'
 
-    def get_body(self, charset: str) -> bytes:
-        return self.data.encode(charset)
+    def __init__(self, content: dict, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.content = content
 
-    @property
-    def mime_type(self) -> str:
-        return 'text/html'
+    def body_as_bytes(self) -> bytes:
+        return json.dumps(self.content, ensure_ascii=False, separators=(",", ":")).encode(self.charset)
