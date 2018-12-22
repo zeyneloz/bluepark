@@ -97,7 +97,7 @@ class HTTPHeaderParserMixin:
         return self.content_type.get('boundary', None)
 
 
-class BaseHTTPRequest(BaseRequest, HTTPHeaderParserMixin):
+class HTTPBaseRequest(BaseRequest, HTTPHeaderParserMixin):
     # Boolean value signifying if there is additional content to come (as part of a Request message
     _has_more_body = True
 
@@ -204,6 +204,6 @@ class BaseHTTPRequest(BaseRequest, HTTPHeaderParserMixin):
         return self.json
 
 
-class HTTPRequest(BaseHTTPRequest):
+class HTTPRequest(HTTPBaseRequest):
     '''HTTP 1.1 Request'''
     pass

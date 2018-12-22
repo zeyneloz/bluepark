@@ -1,5 +1,5 @@
-from bluepark.utils.signing import hmac_json_dumps, hmac_json_loads, BadSignature
 from bluepark import current_app
+from bluepark.utils.signing import hmac_json_dumps, hmac_json_loads, BadSignature
 
 
 class BaseSession:
@@ -46,12 +46,19 @@ class BaseSession:
             self.modified = True
         return self._session.pop(key, default)
 
+    def get(self, key, default=None):
+        return self._session.get(key, default)
+
     def setdefault(self, key, value):
         if key in self._session:
             return self._session[key]
         self._session[key] = value
         self.modified = True
         return value
+
+    @property
+    def is_empty(self):
+        return not bool(self._session)
 
     def load(self, cookie_string: str) -> None:
         raise NotImplementedError()

@@ -2,10 +2,10 @@
 import uvicorn
 
 from bluepark.app import BluePark
-from bluepark.routing import Router
-from bluepark.session.middleware import session_middleware
-from bluepark.session.backend import CookieSession
 from bluepark.response import JSONResponse, TextResponse
+from bluepark.routing import Router
+from bluepark.session.backend import CookieSession
+from bluepark.session.middleware import session_middleware
 
 app = BluePark()
 
@@ -20,6 +20,7 @@ async def middleware_logger(request, next_middleware):
     response = await next_middleware()
     print('Request ends')
     return response
+
 
 # Middleware are called in order before calling the view function
 # Every middleware must await for next_middleware
@@ -52,8 +53,11 @@ async def user_list(request):
 
 
 @blue_router.route('products/', methods=['GET'])
-async def product_list(request,):
-    return JSONResponse(data={})
+async def product_list(request, ):
+    print(request.session.items())
+    request.session['visits'] = request.session.get('visits', 0) + 1
+    return JSONResponse(content={})
+
 
 if __name__ == "__main__":
     uvicorn.run(app, "127.0.0.1", 8000, log_level="info")
