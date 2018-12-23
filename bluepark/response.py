@@ -8,17 +8,19 @@ from .utils.structures import CaseInsensitiveDict
 
 
 class HTTPBaseResponse:
+    mime_type = None
 
-    def __init__(self, status: int = 200) -> None:
+    def __init__(self, status: int = 200, mime_type=None) -> None:
+        self.status = status
+        if mime_type is not None:
+            self.mime_type = mime_type
+
         self._response_started = False
         self.headers = CaseInsensitiveDict()
         self._extra_headers = []
-        self.status = status
         self.charset = current_app.settings['DEFAULT_RESPONSE_CHARSET']
-        self.body = None
-
-        # charset encodings to be used
         self._header_encoding = current_app.settings['DEFAULT_HEADER_ENCODING']
+        self.body = None
 
     def get_headers(self):
         '''Return the list of headers in ASGI header format.'''
@@ -82,14 +84,14 @@ class HTTPBaseResponse:
 
     @property
     def _content_type(self):
-        return f'application/json; charset={self.charset}'
+        return f'{self.mime_type}: charset={self.charset}'
 
     def body_as_bytes(self) -> bytes:
         raise NotImplementedError()
 
 
 class TextResponse(HTTPBaseResponse):
-    _mime_type = 'text/html'
+    mime_type = 'text/html'
 
     def __init__(self, content: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,7 +102,7 @@ class TextResponse(HTTPBaseResponse):
 
 
 class JSONResponse(HTTPBaseResponse):
-    _mime_type = 'application/json'
+    mime_type = 'application/json'
 
     def __init__(self, content: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
