@@ -10,17 +10,16 @@ from .utils.structures import CaseInsensitiveDict
 class HTTPBaseResponse:
     mime_type = None
 
-    def __init__(self, status: int = 200, mime_type=None) -> None:
+    def __init__(self, status: int = 200, mime_type: str = None) -> None:
         self.status = status
         if mime_type is not None:
             self.mime_type = mime_type
 
+        self._header_encoding = current_app.settings['DEFAULT_HEADER_ENCODING']
         self._response_started = False
         self.headers = CaseInsensitiveDict()
         self._extra_headers = []
         self.charset = current_app.settings['DEFAULT_RESPONSE_CHARSET']
-        self._header_encoding = current_app.settings['DEFAULT_HEADER_ENCODING']
-        self.body = None
 
     def get_headers(self):
         '''Return the list of headers in ASGI header format.'''
@@ -84,7 +83,7 @@ class HTTPBaseResponse:
 
     @property
     def _content_type(self):
-        return f'{self.mime_type}: charset={self.charset}'
+        return f'{self.mime_type}; charset={self.charset}'
 
     def body_as_bytes(self) -> bytes:
         raise NotImplementedError()
