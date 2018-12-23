@@ -1,4 +1,4 @@
-from typing import Awaitable
+import typing
 
 from .app import BluePark
 from .request import HTTPRequest
@@ -94,28 +94,28 @@ class HTTPDispatcher:
         self.asgi_app = asgi_app
         self._middleware_iterator = iter(asgi_app.app._http_middleware)
 
-    def __call__(self, *args, **kwargs) -> Awaitable:
+    def __call__(self, *args, **kwargs) -> typing.Awaitable:
         '''Return the next middleware in the list'''
 
         next_middleware = next(self._middleware_iterator, None)
         if next_middleware is not None:
             return next_middleware(self.asgi_app.request, self)
 
-        view_function = self.get_view_function()
-        return view_function(self.asgi_app.request)
+        view_function, extra_kwargs = self.get_view_function()
+        return view_function(self.asgi_app.request, **extra_kwargs)
 
-    def get_view_function(self) -> HTTPView:
-        '''Return the view function that matches request path.
-        Return None of no view is found for the path'''
+    def get_view_function(self) -> typing.Tuple[HTTPView, dict]:
+        '''Return the view function that matches request path and URL param values.'''
         rule = self.asgi_app.app._main_router.get_rule_for_path(self.asgi_app.request.path)
 
         if rule is None:
-            return self.not_found
+            return self.not_found, {}
 
         if not rule.is_method_allowed(self.asgi_app.request.method):
-            return self.method_not_allowed
+            return self.method_not_allowed, {}
 
-        return rule.view_function
+        # Parsed params contains the dictionary of captured URL parameter and values
+        return rule.view_function, rule.parsed_params
 
     @staticmethod
     async def not_found(request):

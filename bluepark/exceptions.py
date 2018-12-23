@@ -1,4 +1,3 @@
-
 class RequestBodyNotExist(Exception):
     '''Http request body is not yet received'''
     pass
@@ -16,4 +15,9 @@ class BodyAlreadyReceived(Exception):
 
 class HTTPResponseAlreadyStarted(Exception):
     '''HTTP response already started'''
+    pass
+
+
+class PathRegisterError(Exception):
+    '''Error while registerinf a path'''
     pass

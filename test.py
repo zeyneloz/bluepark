@@ -34,11 +34,17 @@ async def main_page(request):
     return TextResponse('Main page', status=200)
 
 
-@user_router.route('/speech/', methods=['GET', 'POST'])
-async def user_list_view(request):
-    response = TextResponse('Okay', status=200)
-    response.set_cookie(key='csrf', value='r', max_age=3600)
-    return response
+@blue_router.route('/users/<int:id>/', methods=['GET', 'POST'])
+async def user_list_view(request, id):
+    if id == 10:
+        return TextResponse('User number 10')
+    else:
+        return TextResponse('User not found', status=404)
+
+
+@blue_router.route('/users/<int:id>/dragons/<str:name>/', methods=['GET', 'POST'])
+async def user_list_view(request, id, name):
+    return TextResponse(f'User {id} and dragon {name}')
 
 
 @blue_router.route('/users/', methods=['GET'])
