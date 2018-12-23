@@ -19,24 +19,37 @@ class BaseRouter:
     # Default HTTP methods to be used
     _default_http_methods = ('GET', 'HEAD', 'OPTIONS')
 
-    def __init__(self, default_http_methods: RequestMethods = None, prefix: str = '') -> None:
+    def __init__(self, default_http_methods: RequestMethods = None, prefix: str = '/') -> None:
         # Holds all of the url rules for this router
         self._rules = {}
 
         # Prefix to be added the beginning of every url registered using this router
-        self.prefix = self.normalize_path(prefix)
+        self.prefix = self.normalize_prefix(prefix)
+
         if default_http_methods is not None:
             self._default_http_methods = (method.upper() for method in default_http_methods)
 
-    def normalize_path(self, path: str):
+    def normalize_prefix(self, prefix: str) -> str:
+        '''Check if prefix has leading slash. Remove trailing slash.'''
+        if prefix == '' or prefix[0] != '/':
+            raise ValueError('Prefix must start with a slash')
+        if prefix == '/':
+            return prefix
+        return prefix.rstrip('/')
+
+    def normalize_path(self, path: str) -> str:
         '''
-        Given a path string, remove leading slash and put a trailing slash.
+        Check if path has leading slash.
 
         :param path: The URL path as string
         '''
-        if path == '':
-            return ''
-        return path.strip('/') + '/'
+        if path == '' or path[0] != '/':
+            raise ValueError('Every path must start with a slash')
+        return path
+
+    def prefixed_path(self, path: str) -> str:
+        '''Return given path with prefix.'''
+        return f'{self.prefix.rstrip("/")}{path}'
 
     def add_rule(self, path: str, view_function: HTTPView,
                  rule_name: str = None, methods: RequestMethods = None) -> None:
@@ -59,7 +72,7 @@ class BaseRouter:
             methods = [method.upper() for method in methods]
 
         normalized_path = self.normalize_path(path)
-        prefixed_path = '/' + self.prefix + normalized_path
+        prefixed_path = self.prefixed_path(normalized_path)
         rule = URLRule(view_function, rule_name, methods)
         self._add_rule(prefixed_path, rule)
 

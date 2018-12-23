@@ -10,7 +10,7 @@ from bluepark.session.middleware import session_middleware
 app = BluePark()
 
 user_router = Router()
-blue_router = Router(prefix='api/v1/')
+blue_router = Router(prefix='/api/v1/')
 app.register_router(user_router)
 app.register_router(blue_router)
 
@@ -29,14 +29,19 @@ app.add_http_middleware(middleware_logger)
 app.add_http_middleware(session_middleware(backend=CookieSession))
 
 
-@user_router.route('speech/', methods=['GET', 'POST'])
+@user_router.route('/', methods=['GET'])
+async def main_page(request):
+    return TextResponse('Main page', status=200)
+
+
+@user_router.route('/speech/', methods=['GET', 'POST'])
 async def user_list_view(request):
     response = TextResponse('Okay', status=200)
     response.set_cookie(key='csrf', value='r', max_age=3600)
     return response
 
 
-@blue_router.route('users/', methods=['GET'])
+@blue_router.route('/users/', methods=['GET'])
 async def user_list(request):
     if request.method == 'GET':
         return JSONResponse({
@@ -52,7 +57,7 @@ async def user_list(request):
         })
 
 
-@blue_router.route('products/', methods=['GET'])
+@blue_router.route('/products/', methods=['GET'])
 async def product_list(request, ):
     print(request.session.items())
     request.session['visits'] = request.session.get('visits', 0) + 1
