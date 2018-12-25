@@ -167,7 +167,7 @@ class HTTPBaseRequest(BaseRequest, HTTPHeaderParserMixin):
             await self.receive_http_body()
         return self.body
 
-    async def body_as_text(self, silent=False) -> Optional[str]:
+    async def body_as_text(self, silent: bool = False) -> Optional[str]:
         '''
         Decode and return the request body using `self.charset`. Cache the result in `self.text`.
 
@@ -185,7 +185,7 @@ class HTTPBaseRequest(BaseRequest, HTTPHeaderParserMixin):
 
         return self.text
 
-    async def body_as_json(self, silent=False) -> Optional[dict]:
+    async def body_as_json(self, silent: bool = False) -> Optional[dict]:
         '''
         Parse request body as JSON and return. Cache the return value in `self.json`.
 

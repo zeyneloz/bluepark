@@ -1,7 +1,4 @@
-
-
 class CaseInsensitiveDict(dict):
-
     _init_mod = True
 
     def _k(self, key):

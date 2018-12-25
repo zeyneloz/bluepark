@@ -12,11 +12,13 @@ def cached_async_method(func: Callable[[Any, str, int], Awaitable]):
         if name not in instance.__dict__:
             instance.__dict__[name] = await func(instance, *args, **kwargs)
         return instance.__dict__[name]
+
     return wrapper
 
 
 class cached_property:
     '''A decorator that caches the return value of a callable with its name'''
+
     def __init__(self, func):
         self.func = func
         self.__doc__ = getattr(func, '__doc__')

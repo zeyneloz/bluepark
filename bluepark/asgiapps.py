@@ -22,8 +22,10 @@ class BaseASGIApplication:
         self._response_started = False
 
     async def __call__(self, receive: ASGIReceive, send: ASGISend) -> None:
-        '''The receive awaitable provides events as dicts as they occur, and the send awaitable sends events back to
-        the client in a similar dict format.'''
+        '''
+        The receive awaitable provides events as dicts as they occur, and the send awaitable sends events back to
+        the client in a similar dict format.
+        '''
 
         self.receive = receive
         self.send = send
@@ -86,7 +88,7 @@ class HTTPDispatcher:
     '''Await for first middleware in the middleware list.
 
     Pass a callable to the middleware that returns the next middleware on the list.
-    If there is no next middleware, return
+    If there is no next middleware, return the view function.
     '''
     _middleware_iterator = None
 

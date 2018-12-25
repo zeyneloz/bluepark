@@ -1,6 +1,9 @@
 import typing
 
+# Scope is a dictionary that contains at least a type key specifying the protocol that is incoming.
 ASGIScope = typing.Mapping[str, typing.Any]
+
+# Every ASGI message
 ASGIMessage = typing.Dict[str, typing.Any]
 ASGIReceive = typing.Callable[[], typing.Awaitable[ASGIMessage]]
 ASGISend = typing.Callable[[ASGIMessage], typing.Awaitable[None]]

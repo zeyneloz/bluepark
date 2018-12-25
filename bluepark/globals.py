@@ -8,6 +8,7 @@ def simple_proxy_method_proxy(func):
         if self._wrapped == empty_object:
             raise RuntimeError('Proxy object is empty')
         return func(self._wrapped, *args)
+
     return inner
 
 

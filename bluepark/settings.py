@@ -15,7 +15,7 @@ DEFAULT_SETTINGS = {
 
     # Secret key to be used sign session cookies
     'SESSION_SECRET_KEY': 'When',
-    
+
     # Name to be used in cookies for session
     'SESSION_COOKIE_NAME': 'session',
 
@@ -28,7 +28,6 @@ DEFAULT_SETTINGS = {
     # Makes cookies inaccessible by javascript code
     'SESSION_COOKIE_HTTPONLY': True
 
-
 }
 
 
@@ -36,4 +35,3 @@ class Settings(dict):
 
     def __init__(self, defaults: Optional[dict]) -> None:
         super(Settings, self).__init__(defaults or {})
-
