@@ -143,8 +143,9 @@ class BaseRouter:
         )
         self._add_rule(rule_name, rule)
 
-    def _add_rule(self, path: str, rule: URLRule):
-        self._rules[path] = rule
+    def _add_rule(self, rule_name: str, rule: URLRule):
+        # TODO, raise error if rule_name is already registered
+        self._rules[rule_name] = rule
 
     def route(self, path: str, rule_name: str = None, methods: RequestMethods = None) -> typing.Callable:
         '''A decorator for add_rule.'''
@@ -154,6 +155,9 @@ class BaseRouter:
             return view_function
 
         return wrapper
+
+    def on_error(self, status_code: int = None) -> None:
+        pass
 
 
 class MainRouter(BaseRouter):

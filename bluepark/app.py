@@ -9,6 +9,8 @@ class BluePark:
     The BluePark class implements ASGI specifications.
     '''
 
+    router: MainRouter = None
+
     def __init__(self) -> None:
         # TODO, settings from a file
         self.settings = Settings(DEFAULT_SETTINGS)
@@ -17,7 +19,7 @@ class BluePark:
         self._http_middleware = []
 
         # Initialize main router, every router is connected to the main router.
-        self._main_router = MainRouter()
+        self.router = MainRouter()
 
         # Set proxy object to point to current app.
         current_app._wrap(self)
@@ -28,11 +30,11 @@ class BluePark:
         to handle events and send data back to the client. Whenever there is a new connection, the ASGI protocol
         server calls the application instance.
         '''
-        return self.dispatch(scope)
+        return self._dispatch(scope)
 
-    def dispatch(self, scope: ASGIScope) -> ASGIAppInstance:
+    def _dispatch(self, scope: ASGIScope) -> ASGIAppInstance:
         '''
-        Create an ASGI app depending on the type of the scope.
+        Create an ASGI app instance and return it.
         '''
 
         from bluepark.asgiapps import ASGIHTTPApplication
@@ -49,4 +51,4 @@ class BluePark:
 
     def register_router(self, router: Router) -> None:
         '''Register a new router to app.'''
-        router._set_main_router(self._main_router)
+        router._set_main_router(self.router)

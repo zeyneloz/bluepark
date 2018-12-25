@@ -108,7 +108,7 @@ class HTTPDispatcher:
 
     def get_view_function(self) -> typing.Tuple[HTTPView, dict]:
         '''Return the view function that matches request path and URL param values.'''
-        rule = self.asgi_app.app._main_router.get_rule_for_path(self.asgi_app.request.path)
+        rule = self.asgi_app.app.router.get_rule_for_path(self.asgi_app.request.path)
 
         if rule is None:
             return self.not_found, {}

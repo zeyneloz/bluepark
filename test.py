@@ -29,7 +29,7 @@ app.add_http_middleware(middleware_logger)
 app.add_http_middleware(session_middleware(backend=CookieSession))
 
 
-@user_router.route('/', methods=['GET'])
+@app.router.route('/', methods=['GET'])
 async def main_page(request):
     return TextResponse('Main page', status=200)
 
