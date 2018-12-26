@@ -2,8 +2,9 @@ import typing
 
 from .app import BluePark
 from .request import HTTPRequest
-from .response import TextResponse, HTTPBaseResponse
-from .utils.types import ASGIScope, ASGIReceive, ASGISend, HTTPView
+from .response import HTTPBaseResponse
+from .utils.types import ASGIScope, ASGIReceive, ASGISend, HTTPView, ASGIHeaders, ErrorHandler
+from .exceptions import HTTPException, HTTP404, HTTP405
 
 
 class BaseASGIApplication:
@@ -44,7 +45,7 @@ class ASGIHTTPApplication(BaseASGIApplication):
     multiple requests.
     '''
 
-    async def start_response(self, status, headers):
+    async def start_response(self, status: int, headers: ASGIHeaders) -> None:
         '''Start the http response if it is not started yet.'''
         if self._response_started:
             return
@@ -63,11 +64,11 @@ class ASGIHTTPApplication(BaseASGIApplication):
             'more_body': more_body
         })
 
-    async def end_response(self):
+    async def end_response(self) -> None:
         '''End the http response. It is not possible to send http messages after calling this method.'''
         await self.send_http_body(b'', more_body=False)
 
-    async def handle_connection(self):
+    async def handle_connection(self) -> None:
         '''This method will be called whenever there is a new connection from ASGI server'''
         self.request = HTTPRequest(self.app, self.scope, self.receive)
 
@@ -75,11 +76,12 @@ class ASGIHTTPApplication(BaseASGIApplication):
         response = await self.dispatch()
         await self.send_response(response)
 
-    async def dispatch(self):
+    async def dispatch(self) -> HTTPBaseResponse:
+        '''Dispatch the incoming request to the view through middleware and get the response'''
         dispatcher = HTTPDispatcher(self)
         return await dispatcher()
 
-    async def send_response(self, response: HTTPBaseResponse):
+    async def send_response(self, response: HTTPBaseResponse) -> None:
         await self.start_response(status=response.status, headers=response.get_headers())
         await self.send_http_body(body=response.body_as_bytes())
 
@@ -92,39 +94,63 @@ class HTTPDispatcher:
     '''
     _middleware_iterator = None
 
-    def __init__(self, asgi_app: ASGIHTTPApplication):
+    def __init__(self, asgi_app: ASGIHTTPApplication) -> None:
         self.asgi_app = asgi_app
         self._middleware_iterator = iter(asgi_app.app._http_middleware)
 
-    def __call__(self, *args, **kwargs) -> typing.Awaitable:
-        '''Return the next middleware in the list'''
+    async def __call__(self, *args, **kwargs) -> HTTPBaseResponse:
+        '''Call the next middleware in the list and return the awaitable.'''
 
+        # Call all middleware in order and await for their response
         next_middleware = next(self._middleware_iterator, None)
         if next_middleware is not None:
-            return next_middleware(self.asgi_app.request, self)
+            try:
+                response = await next_middleware(self.asgi_app.request, self)
+            except Exception as e:
+                handler = self.get_exception_handler_or_raise(e)
+                return await handler(self.asgi_app.request, e)
+            else:
+                return response
 
+        # At this point, all of the middleware are called and it is time to call view function
         view_function, extra_kwargs = self.get_view_function()
-        return view_function(self.asgi_app.request, **extra_kwargs)
+        try:
+            response = await view_function(self.asgi_app.request, **extra_kwargs)
+        except Exception as e:
+            handler = self.get_exception_handler_or_raise(e)
+            return await handler(self.asgi_app.request, e)
+        else:
+            return response
 
     def get_view_function(self) -> typing.Tuple[HTTPView, dict]:
         '''Return the view function that matches request path and URL param values.'''
         rule = self.asgi_app.app.router.get_rule_for_path(self.asgi_app.request.path)
 
         if rule is None:
-            return self.not_found, {}
+            raise HTTP404()
 
         if not rule.is_method_allowed(self.asgi_app.request.method):
-            return self.method_not_allowed, {}
+            raise HTTP405()
 
         # Parsed params contains the dictionary of captured URL parameter and values
         return rule.view_function, rule.parsed_params
 
-    @staticmethod
-    async def not_found(request):
-        '''Send 404 Not found HTTP message'''
-        return TextResponse('Not Found', status=404)
+    def get_exception_handler_or_raise(self, e: Exception) -> ErrorHandler:
+        # If a exception is processed, it means that it is already captured by another middleware
+        # and the handler for that exception is not found. There is no point in searching handler again.
+        if getattr(e, '._processed', False):
+            raise e
 
-    @staticmethod
-    async def method_not_allowed(request):
-        '''Send 405 Method Not Allowed HTTP message'''
-        return TextResponse('Method Not Allowed', status=404)
+        # Mark Exception as processed.
+        e._processed = True
+
+        if isinstance(e, HTTPException):
+            status_code = getattr(e, 'status_code', -1)
+            handler = self.asgi_app.app.error_handler_by_code(status_code)
+            if handler is not None:
+                return handler
+
+        handler = self.asgi_app.app.error_handler_by_exception(e)
+        if handler is not None:
+            return handler
+        raise e

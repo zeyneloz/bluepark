@@ -1,10 +1,11 @@
 import json
+import typing
 from http.cookies import SimpleCookie
-from typing import Union
 
 from . import current_app
 from .exceptions import HTTPResponseAlreadyStarted
 from .utils.structures import CaseInsensitiveDict
+from .utils.types import ASGIHeaders
 
 
 class HTTPBaseResponse:
@@ -21,15 +22,15 @@ class HTTPBaseResponse:
         self._extra_headers = []
         self.charset = current_app.settings['DEFAULT_RESPONSE_CHARSET']
 
-    def get_headers(self):
+    def get_headers(self) -> ASGIHeaders:
         '''Return the list of headers in ASGI header format.'''
         headers = []
         self.headers.setdefault('content-type', self._content_type)
         for name, value in self.headers.items():
-            headers.append([name.encode(self._header_encoding), value.encode(self._header_encoding)])
+            headers.append((name.encode(self._header_encoding), value.encode(self._header_encoding)))
 
         for name, value in self._extra_headers:
-            headers.append([name.encode(self._header_encoding), value.encode(self._header_encoding)])
+            headers.append((name.encode(self._header_encoding), value.encode(self._header_encoding)))
         return headers
 
     def set_cookie(
@@ -37,7 +38,7 @@ class HTTPBaseResponse:
             key: str,
             value: str = '',
             max_age: int = None,
-            expires: Union[int, str] = None,
+            expires: typing.Union[int, str] = None,
             path: str = '/',
             domain: str = None,
             secure: bool = False,

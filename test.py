@@ -5,13 +5,14 @@ from bluepark.response import JSONResponse, TextResponse
 from bluepark.routing import Router
 from bluepark.session.backend import CookieSession
 from bluepark.session.middleware import session_middleware
+from bluepark.exceptions import HTTPException, HTTP405
 
 app = BluePark()
 
 user_router = Router()
 blue_router = Router(prefix='/api/v1/')
-app.register_router(user_router)
-app.register_router(blue_router)
+app.add_router(user_router)
+app.add_router(blue_router)
 
 
 async def middleware_logger(request, next_middleware):
@@ -28,9 +29,26 @@ app.add_http_middleware(middleware_logger)
 app.add_http_middleware(session_middleware(backend=CookieSession))
 
 
+async def error_handler_403(request, e):
+    return JSONResponse({
+        'code': e.status_code,
+        'error': e.message
+    })
+
+
+async def error_handler_404(request, e):
+    return JSONResponse({
+        'code': e.status_code,
+        'error': 'Requested page is not found'
+    })
+
+app.add_error_handler(403, error_handler_403)
+app.add_error_handler(404, error_handler_404)
+
+
 @app.router.route('/', methods=['GET'])
 async def main_page(request):
-    return TextResponse('Main page', status=200)
+    raise HTTPException(status_code=403, message='Forbidden')
 
 
 @blue_router.route('/users/<int:id>/', methods=['GET', 'POST'])
