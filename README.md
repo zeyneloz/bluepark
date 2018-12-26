@@ -1,5 +1,5 @@
 
-# BluePark - /Hnhp3L  
+# BluePark 
   
 BluePark is an experimental lightweight ASGI web framework.
 

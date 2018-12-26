@@ -1,4 +1,3 @@
-# 23.09.2016 /zCkwrF
 import uvicorn
 
 from bluepark.app import BluePark

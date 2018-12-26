@@ -7,7 +7,7 @@ from .backend import BaseSession
 
 
 class session_middleware:
-    '''Add session dict to request and use backend class to store the session.'''
+    '''Add session object to the request and use backend class to store the session.'''
 
     def __init__(self, backend: Type[BaseSession]) -> None:
         self.backend_class = backend

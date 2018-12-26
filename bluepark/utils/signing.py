@@ -58,10 +58,24 @@ class TimeStampedHMACSigner(HMACSigner):
     '''Use HMAC to sign the message and include timestamp in to the message.'''
 
     def sign(self, message: str) -> str:
+        '''
+        Sign the given message using HMAC and add timestamp to the final output.
+
+        :param message: Message to sign.
+        :return: Base64 encoded string in a special format with signature and timestamp.
+        '''
         timestamp = b64encode(str(int(time.time())).encode(self.encoding)).decode(self.encoding)
         return super().sign(f'{message}{self.separator}{timestamp}')
 
     def verify(self, signed_message: str, max_age: int = None) -> str:
+        '''
+        Decode `signed_message` using base64 and parse it. Validate message signature using HMAC
+        and check that the timestamp is still valid for given `max_age`.
+
+        :param signed_message: Base64 encoded and signed message string.
+        :param max_age: Number of seconds to expire message since the timestamp.
+        :return: Return the verified and decoded message.
+        '''
         timestamped_message = super().verify(signed_message)
         if self.separator not in timestamped_message:
             raise BadSignature(f'No `{self.separator}` found in message')
