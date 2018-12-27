@@ -64,22 +64,6 @@ async def user_list_view(request, id, name):
     return TextResponse(f'User {id} and dragon {name}')
 
 
-@blue_router.route('/users/', methods=['GET'])
-async def user_list(request):
-    if request.method == 'GET':
-        return JSONResponse({
-            'bucket-list': [
-                {'id': 1, 'todo': '/'},
-                {'id': 2, 'todo': '3'},
-                {'id': 3, 'todo': 'a'},
-                {'id': 4, 'todo': 'j'},
-                {'id': 5, 'todo': '1'},
-                {'id': 6, 'todo': 'v'},
-                {'id': 7, 'todo': 'C'},
-            ]
-        })
-
-
 @blue_router.route('/products/', methods=['GET'])
 async def product_list(request, ):
     print(request.session.items())
