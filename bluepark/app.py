@@ -34,6 +34,8 @@ class BluePark:
         # Error handlers
         self._error_handlers_by_code: typing.MutableMapping[int, ErrorHandler] = {}
         self._error_handlers_by_exception: typing.List[typing.Tuple[typing.Any, ErrorHandler]] = []
+
+        # Add default handler for http exception
         self.add_error_handler(HTTPException, _http_exception_handler)
 
         # Set proxy object to point to current app.
@@ -73,13 +75,41 @@ class BluePark:
         return self._error_handlers_by_code.get(status_code, None)
 
     def error_handler_by_exception(self, e: Exception) -> typing.Optional[ErrorHandler]:
-        '''Return error handler function or None for given exception type'''
+        '''Return error handler function or None for given exception object'''
 
-        # TODO most specific exception handler should be returned
+        # Closest handler function and its distance in class hierarchy to given exception
+        closest_handler = (None, 999)
+        error_type = type(e)
+
         for e_class, handler in self._error_handlers_by_exception:
-            if isinstance(e, e_class):
-                return handler
-        return None
+            if not isinstance(e, e_class):
+                continue
+            if error_type == e_class:
+                closest_handler = (handler, 0)
+                break
+            distance = self._distance_to_parent(error_type, e_class)
+            if distance < closest_handler[1]:
+                closest_handler = (handler, distance)
+        return closest_handler[0]
+
+    def _distance_to_parent(self, cls, parent_cls) -> int:
+        '''Breadth first search for finding the distance of parent class in inheritance hierarchy'''
+        # FIFO queue for class, distance pairs
+        bases_fifo = [(base, 1) for base in cls.__bases__]
+
+        while True:
+            if len(bases_fifo) == 0:
+                return 999
+            base_pair = bases_fifo.pop(0)
+            current_cls = base_pair[0]
+            current_distance = base_pair[1]
+            if current_cls == parent_cls:
+                return current_distance
+
+            for base_cls in current_cls.__bases__:
+                # omit object type
+                if base_cls != object:
+                    bases_fifo.append((base_cls, current_distance + 1))
 
     def add_error_handler(self, indicator: typing.Union[int, typing.Type[Exception]], handler: ErrorHandler) -> None:
         '''Add an error handler for an exception either by status code (for HTTPExceptions) or exception class'''
