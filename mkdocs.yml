@@ -1,6 +1,9 @@
 site_name: BluePark
 site_description: An experimental lightweight ASGI web framework.
 
+repo_name: zeyneloz/bluepark
+repo_url: https://github.com/zeyneloz/bluepark
+
 theme:
   name: 'material'
 
