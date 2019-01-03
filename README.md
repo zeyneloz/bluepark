@@ -3,7 +3,7 @@
 # BluePark   
  BluePark is an experimental lightweight ASGI web framework.  
   
-Temporary website: [https://pythonbluepark.blogspot.com](https://goo.gl/Dsmwn3)
+Docs: https://www.bluepark.io/
   
 ## Running on development environment  
   
