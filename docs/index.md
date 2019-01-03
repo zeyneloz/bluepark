@@ -1,8 +1,6 @@
+# BluePark
 
-  
-# BluePark   
 BluePark is an experimental lightweight ASGI web framework.
- 
 Since BluePark is just an experiment for now, the API may change drastically over time.
   
 Docs: https://www.bluepark.io/

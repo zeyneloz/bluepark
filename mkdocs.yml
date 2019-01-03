@@ -1,0 +1,8 @@
+site_name: BluePark
+site_description: An experimental lightweight ASGI web framework.
+
+theme:
+  name: 'material'
+
+nav:
+  - Home: 'index.md'
